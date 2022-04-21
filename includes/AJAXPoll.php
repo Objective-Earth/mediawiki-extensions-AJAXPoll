@@ -46,12 +46,34 @@ class AJAXPoll {
 		} else {
 			$id = strtoupper( md5( $input ) );
 		}
-
+		$pollText = "";
+		$pollBody = array();
 		// get the input
 		$input = $parser->recursiveTagParse( $input, $frame );
 		$input = trim( strip_tags( $input ) );
 		$lines = explode( "\n", trim( $input ) );
-
+		foreach ( $lines as $parameter ) {
+			$paramField = explode( '=', $parameter, 2 );
+			if ( count( $paramField ) < 2 ) {
+				continue;
+			}
+			$type = trim( $paramField[0] );
+			$arg = trim( $paramField[1] );
+			switch ( $type ) {
+				case 'id':
+					$id = $arg;
+					break;
+				case 'poll':
+					array_push($pollBody, $arg);
+					break;
+				case 'option':
+					array_push($pollBody, $arg);
+					break;
+			}
+		}
+		foreach($pollBody as $line) {
+			$pollText .= $line."\n";
+		}
 		$dbw = wfGetDB( DB_MASTER );
 
 		/**
@@ -82,7 +104,7 @@ class AJAXPoll {
 					[
 						'poll_id' => $id,
 						'poll_show_results_before_voting' => $showResultsBeforeVoting,
-						'poll_txt' => $input,
+						'poll_txt' => $pollText,
 						'poll_date' => $dbw->timestamp( wfTimestampNow() ),
 					],
 					__METHOD__,
@@ -110,7 +132,7 @@ class AJAXPoll {
 			}
 		}
 
-		switch ( $lines[0] ) {
+		switch ( $pollBody[0] ) {
 			case 'STATS':
 				$ret = self::buildStats();
 				break;
@@ -119,7 +141,7 @@ class AJAXPoll {
 					[
 						'id' => 'ajaxpoll-container-' . $id
 					],
-					self::buildHTML( $id, $parser->getUser(), $readonly, $lines )
+					self::buildHTML( $id, $parser->getUser(), $readonly, $pollBody )
 				);
 				break;
 		}
